@@ -21,19 +21,19 @@ async def create_trojan(event):
             await event.respond("**Masa aktif (hari):**")
             response = await conv.wait_event(events.NewMessage(incoming=True, from_users=sender.id))
             exp_day = int(response.raw_text.strip())
-        # 3. Pilih UUID otomatis atau manual
-        async with bot.conversation(chat) as conv:
-            await conv.send_message("🔑 Gunakan UUID otomatis atau manual?", buttons=[
-                [Button.inline("🔄 Otomatis (UUID)", b"uuid_auto")],
-                [Button.inline("✍️ Manual", b"uuid_manual")]
-            ])
-            uuid_choice = await conv.wait_event(events.CallbackQuery(from_users=sender.id))
 
-            if uuid_choice.data == b"uuid_auto":
-                password = str(uuid.uuid4())
-            else:
-                await conv.send_message("✍️ Masukkan password/UUID manual:")
-                response = await conv.wait_event(events.NewMessage(from_users=sender.id))
+        # 3. Pilih UUID otomatis atau manual
+        await event.respond("**Gunakan UUID otomatis atau manual?**", buttons=[
+            [Button.inline("🔄 Otomatis (UUID)", b"uuid_auto")],
+            [Button.inline("✍️ Manual", b"uuid_manual")]
+        ])
+        uuid_choice = await bot.wait_event(events.CallbackQuery)
+        if uuid_choice.data == b"uuid_auto":
+            password = str(uuid.uuid4())
+        else:
+            async with bot.conversation(chat) as conv:
+                await event.respond("**Masukkan Password/UUID manual:**")
+                response = await conv.wait_event(events.NewMessage(incoming=True, from_users=sender.id))
                 password = response.raw_text.strip()
 
         # 4. Proses expired
