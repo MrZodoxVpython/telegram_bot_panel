@@ -1,0 +1,14 @@
+[Unit]
+Description=Simple XolPanel - @XolPanel
+After=network.target
+
+[Service]
+WorkingDirectory=/root/xolpanel
+ExecStart=/usr/bin/python3 /root/xolpanel/__main__.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
+

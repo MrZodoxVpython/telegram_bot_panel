@@ -1,0 +1,3 @@
+BOT_TOKEN="7859830484:AAEPnKrExvpFrYo_qIGAFDvfWrem-CPZZOQ"
+ADMIN="7676981757"
+DOMAIN="sgdo-2dev.tokomard.store"
