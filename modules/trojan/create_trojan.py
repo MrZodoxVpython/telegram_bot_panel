@@ -15,24 +15,26 @@ def hitung_expired(input_str):
 def insert_to_tag(config_path, tag, comment, entry):
     if not os.path.exists(config_path):
         return False
+
     with open(config_path, 'r') as f:
         lines = f.readlines()
 
     new_lines = []
     inserted = False
+
     for i, line in enumerate(lines):
         line = line.rstrip()
         new_lines.append(line)
 
         if f"#{tag}" in line and not inserted:
             new_lines.append(comment)
-            # Tambahkan akun baru dengan koma di awal baris agar valid
-            new_lines.append(f'}},{{{entry[1:-1]}')
+            new_lines.append(f'}},{{{entry}')  # <- format benar
             inserted = True
 
     if inserted:
         with open(config_path, 'w') as f:
             f.write('\n'.join(new_lines) + '\n')
+
     return inserted
 
 @bot.on(events.CallbackQuery(data=b"trojan/create_trojan"))
@@ -93,7 +95,7 @@ async def finish_trojan(event, username, expired, password):
     config_path = "/etc/xray/config.json"
     domain_file = "/etc/xray/domain"
     comment_line = f"#! {username} {expired}"
-    json_line = f'{{"password": "{password}", "email": "{username}"}}'
+    json_line = f'"password": "{password}", "email": "{username}"'
 
     tags = ["trojanws", "trojangrpc"]
     success = True
@@ -101,22 +103,22 @@ async def finish_trojan(event, username, expired, password):
         if not insert_to_tag(config_path, tag, comment_line, json_line):
             success = False
 
-        if success:
-            subprocess.call("systemctl restart xray", shell=True)
+    if success:
+        subprocess.call("systemctl restart xray", shell=True)
 
-            try:
-                with open(domain_file) as f:
-                    domain = f.read().strip()
-            except:
-                domain = "yourdomain.com"
+        try:
+            with open(domain_file) as f:
+                domain = f.read().strip()
+        except:
+            domain = "yourdomain.com"
 
-            tls = "443"
-            ntls = "80"
-            path = "/trojan-ws"
-            grpc_service = "trojan-grpc"
-            expired_date = DT.datetime.strptime(expired, "%Y-%m-%d").strftime("%d %B %Y")
+        tls = "443"
+        ntls = "80"
+        path = "/trojan-ws"
+        grpc_service = "trojan-grpc"
+        expired_date = DT.datetime.strptime(expired, "%Y-%m-%d").strftime("%d %B %Y")
 
-            msg = f"""```
+        msg = f"""```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
            TROJAN ACCOUNT          
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -137,11 +139,11 @@ Link gRPC      : trojan://{password}@{domain}:{tls}?mode=gun&security=tls&type=g
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```"""
 
-            buttons = [
-                [Button.url("🔧 Repository", "https://github.com/xolvaid/simplepanel"),
-                 Button.url("📢 Channel", "https://t.me/XolPanel")]
-            ]
-            await bot.send_message(event.chat_id, msg, buttons=buttons, parse_mode="markdown")
-        else:
-            await bot.send_message(event.chat_id, "❌ Gagal menambahkan akun ke Xray.")
+        buttons = [
+            [Button.url("🔧 Repository", "https://github.com/xolvaid/simplepanel"),
+             Button.url("📢 Channel", "https://t.me/XolPanel")]
+        ]
+        await bot.send_message(event.chat_id, msg, buttons=buttons, parse_mode="markdown")
+    else:
+        await bot.send_message(event.chat_id, "❌ Gagal menambahkan akun ke Xray.")
 
