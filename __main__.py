@@ -1,5 +1,5 @@
 #from __init__ import *
-from xolpanel import *
+from telegram_bot_panel import *
 from importlib import import_module
 from telegram_bot_panel.modules import ALL_MODULES
 for module_name in ALL_MODULES:
