@@ -1,4 +1,4 @@
-from xolpanel import *
+from telegram_bot_panel import *
 
 @bot.on(events.CallbackQuery(data=b"ssh/create_ssh"))
 async def create_ssh(event):
