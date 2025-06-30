@@ -52,7 +52,8 @@ async def create_trojan(event):
                 if f"#{tag}" in stripped and not inserted:
                     # Tambahkan komentar dan baris JSON dengan format yang benar
                     new_lines.append(comment)
-                    new_lines.append(f"}},{entry}")
+                    new_lines.append(f"},")
+                    new_lines.append(f"{entry}")
                     inserted = True
 
             if inserted:
