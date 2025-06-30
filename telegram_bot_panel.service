@@ -1,12 +1,13 @@
 [Unit]
-Description=Multi-Repo Git Auto Commit & Push
+Description=Telegram Bot Panel - Auto Start
 After=network.target
 
 [Service]
-ExecStart=/etc/xray/autocommit.sh
+WorkingDirectory=/var/www/html/telegram_bot_panel
+ExecStart=/usr/bin/python3 /var/www/html/Telegram-Bot-Panel/__main__.py
 Restart=always
 User=root
-Environment=GIT_SSH_COMMAND=ssh
+Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=multi-user.target
