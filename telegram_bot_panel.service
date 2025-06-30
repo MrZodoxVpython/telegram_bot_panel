@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=/var/www/html/telegram_bot_panel
-ExecStart=/usr/bin/python3 /var/www/html/Telegram-Bot-Panel/__main__.py
+ExecStart=/usr/bin/python3 /var/www/html/telegram_bot_panel/__main__.py
 Restart=always
 User=root
 Environment=PYTHONUNBUFFERED=1
