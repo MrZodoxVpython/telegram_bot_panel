@@ -1,4 +1,4 @@
-from xolpanel import *
+from telegram_bot_panel import *
 import subprocess
 import socket
 import platform
