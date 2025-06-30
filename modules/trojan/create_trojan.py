@@ -36,21 +36,27 @@ async def create_trojan(event):
         comment_line = f"#! {username} {expired_date}"
         json_entry = f'{{"password": "{password}", "email": "{username}"}}'
 
-        def insert_to_tag(config_path, tag, comment, entry):
-            if not os.path.exists(config_path):
+        def insert_to_tag(path, tag, comment, entry):
+            if not os.path.exists(path):
                 return False
-            with open(config_path, 'r') as f:
+
+            with open(path, 'r') as f:
                 lines = f.readlines()
+
             new_lines = []
             inserted = False
-            for line in lines:
+
+            for i, line in enumerate(lines):
+                stripped = line.strip()
                 new_lines.append(line.rstrip())
-                if f"#{tag}" in line and not inserted:
+                if f"#{tag}" in stripped and not inserted:
+                    # Tambahkan komentar dan baris JSON dengan format yang benar
                     new_lines.append(comment)
-                    new_lines.append(entry)
+                    new_lines.append(f"}},{entry}")
                     inserted = True
+
             if inserted:
-                with open(config_path, 'w') as f:
+                with open(path, 'w') as f:
                     f.write('\n'.join(new_lines) + '\n')
             return inserted
 
