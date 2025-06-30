@@ -1,90 +1,105 @@
-#!/usr/bin/env python3
 from telegram_bot_panel import *
-import os
-import json
+import json, os, subprocess
 from datetime import datetime, timedelta
 
-def hitung_expired(input_str):
-    if input_str.isdigit():
-        return (datetime.now() + timedelta(days=int(input_str))).strftime("%Y-%m-%d")
-    return input_str
+@bot.on(events.CallbackQuery(data=b"trojan/create_trojan"))
+async def create_trojan(event):
+    async def create_trojan_(event):
+        chat = event.chat_id
 
-def insert_to_tag(config_path, tag, comment, entry):
-    if not os.path.exists(config_path):
-        return False
-    with open(config_path, 'r') as f:
-        lines = f.readlines()
+        # Minta Username
+        async with bot.conversation(chat) as convo:
+            await event.respond("**Username:**")
+            username = (await convo.wait_event(events.NewMessage(incoming=True, from_users=sender.id))).raw_text.strip()
 
-    new_lines = []
-    inserted = False
-    for i, line in enumerate(lines):
-        new_lines.append(line.rstrip())
-        if f"#{tag}" in line and not inserted:
-            new_lines.append(comment)
-            new_lines.append(entry)
-            inserted = True
+        # Minta Password / UUID
+        async with bot.conversation(chat) as convo:
+            await event.respond("**Password (UUID):**")
+            password = (await convo.wait_event(events.NewMessage(incoming=True, from_users=sender.id))).raw_text.strip()
 
-    if inserted:
-        with open(config_path, 'w') as f:
-            f.write('\n'.join(new_lines) + '\n')
-    return inserted
+        # Pilih Masa Aktif
+        async with bot.conversation(chat) as convo:
+            await event.respond("**Choose Expiry Day**", buttons=[
+                [Button.inline("• 3 Day •", b"3"), Button.inline("• 7 Day •", b"7")],
+                [Button.inline("• 30 Day •", b"30"), Button.inline("• 60 Day •", b"60")]
+            ])
+            exp_event = await convo.wait_event(events.CallbackQuery)
+            exp_days = int(exp_event.data.decode("ascii"))
+            expired_date = (datetime.now() + timedelta(days=exp_days)).strftime("%Y-%m-%d")
 
-def main():
-    print("=== CREATE TROJAN ACCOUNT ===")
-    username = input("Username      : ").strip()
-    expired_input = input("Expired (hari / yyyy-mm-dd): ").strip()
-    password = input("Password (UUID): ").strip()
+        # Proses Tambah ke config.json
+        config_path = "/etc/xray/config.json"
+        domain_path = "/etc/xray/domain"
+        domain = open(domain_path).read().strip() if os.path.exists(domain_path) else "yourdomain.com"
 
-    config_path = "/etc/xray/config.json"
-    domain_file = "/etc/xray/domain"
-    tags = ["trojanws", "trojangrpc"]
-    comment_prefix = "#! "
-    expired = hitung_expired(expired_input)
-    comment_line = f"{comment_prefix}{username} {expired}"
-    json_line = f'{{"password": "{password}", "email": "{username}"}}'
+        tags = ["trojanws", "trojangrpc"]
+        comment_line = f"#! {username} {expired_date}"
+        json_entry = f'{{"password": "{password}", "email": "{username}"}}'
 
-    success = True
-    for tag in tags:
-        if not insert_to_tag(config_path, tag, comment_line, json_line):
-            success = False
+        def insert_to_tag(config_path, tag, comment, entry):
+            if not os.path.exists(config_path):
+                return False
+            with open(config_path, 'r') as f:
+                lines = f.readlines()
+            new_lines = []
+            inserted = False
+            for line in lines:
+                new_lines.append(line.rstrip())
+                if f"#{tag}" in line and not inserted:
+                    new_lines.append(comment)
+                    new_lines.append(entry)
+                    inserted = True
+            if inserted:
+                with open(config_path, 'w') as f:
+                    f.write('\n'.join(new_lines) + '\n')
+            return inserted
 
-    if success:
-        os.system("systemctl restart xray")
-        try:
-            with open(domain_file) as f:
-                domain = f.read().strip()
-        except:
-            domain = "yourdomain.com"
+        success = True
+        for tag in tags:
+            if not insert_to_tag(config_path, tag, comment_line, json_entry):
+                success = False
 
-        tls = "443"
-        ntls = "80"
-        path = "/trojan-ws"
-        grpc_service = "trojan-grpc"
+        if success:
+            subprocess.call("systemctl restart xray", shell=True)
 
-        output = f"""
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           TROJAN ACCOUNT          
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Remarks        : {username}
-Host/IP        : {domain}
-Wildcard       : (bug.com).{domain}
-Port TLS       : {tls}
-Port non-TLS   : {ntls}
-Port gRPC      : {tls}
-Password       : {password}
-Path           : {path}
-ServiceName    : {grpc_service}
-Expired On     : {expired}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Link TLS       : trojan://{password}@{domain}:{tls}?path={path}&security=tls&type=ws#{username}
-Link non-TLS   : trojan://{password}@{domain}:{ntls}?path={path}&security=none&type=ws#{username}
-Link gRPC      : trojan://{password}@{domain}:{tls}?mode=gun&security=tls&type=grpc&serviceName={grpc_service}#{username}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        """
-        print(output)
+            tls = "443"
+            ntls = "80"
+            path = "/trojan-ws"
+            grpc_service = "trojan-grpc"
+
+            msg = f"""
+**━━━━━━━━━━━━━━━━**
+**⟨ TROJAN Account ⟩**
+**━━━━━━━━━━━━━━━━**
+**» Host:** `{domain}`
+**» Username:** `{username}`
+**» Password:** `{password}`
+**» Port TLS:** `443`
+**» Port non-TLS:** `80`
+**» Port gRPC:** `443`
+**» Path:** `{path}`
+**» ServiceName:** `{grpc_service}`
+**» Expired:** `{expired_date}`
+**━━━━━━━━━━━━━━━━**
+**⟨ Trojan Links ⟩**
+🔗 TLS: `trojan://{password}@{domain}:443?path={path}&security=tls&type=ws#{username}`
+🔗 non-TLS: `trojan://{password}@{domain}:80?path={path}&security=none&type=ws#{username}`
+🔗 gRPC: `trojan://{password}@{domain}:443?mode=gun&security=tls&type=grpc&serviceName={grpc_service}#{username}`
+**━━━━━━━━━━━━━━━━**
+**🤖 @XolPanel**
+"""
+            inline = [
+                [Button.url("[ GitHub Repo ]", "https://github.com/xolvaid/simplepanel"),
+                 Button.url("[ Channel ]", "https://t.me/XolPanel")]
+            ]
+            await event.respond(msg, buttons=inline)
+        else:
+            await event.respond("❌ Gagal menambahkan akun ke salah satu tag.")
+
+    sender = await event.get_sender()
+    a = valid(str(sender.id))
+    if a == "true":
+        await create_trojan_(event)
     else:
-        print("❌ Gagal menambahkan akun ke salah satu tag.")
-
-if __name__ == "__main__":
-    main()
+        await event.answer("Access Denied", alert=True)
 
