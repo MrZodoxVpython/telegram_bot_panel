@@ -1,4 +1,4 @@
-from xolpanel import *
+from telegram_bot_panel import *
 
 @bot.on(events.NewMessage(pattern=r"(?:/menu)$"))
 @bot.on(events.CallbackQuery(data=b'menu'))
