@@ -1,4 +1,5 @@
 #!/bin/bash
+#benjaminwickman
 #tokomard
 red='\e[1;31m'
 green='\e[0;32m'
