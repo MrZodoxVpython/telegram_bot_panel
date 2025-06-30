@@ -5,7 +5,6 @@ import datetime as DT
 import subprocess
 from telethon import events, Button
 
-# Simpan data sesi sementara
 data_trojan = {}
 
 def hitung_expired(input_str):
@@ -24,10 +23,11 @@ def insert_to_tag(config_path, tag, comment, entry):
     for i, line in enumerate(lines):
         line = line.rstrip()
         new_lines.append(line)
+
         if f"#{tag}" in line and not inserted:
             new_lines.append(comment)
-            new_lines.append(f"}},")  # tutup entri sebelumnya
-            new_lines.append(entry)
+            # Tambahkan akun baru dengan koma di awal baris agar valid
+            new_lines.append(f",{entry}")
             inserted = True
 
     if inserted:
@@ -52,7 +52,6 @@ async def create_trojan(event):
         expired_input = (await conv.wait_event(events.NewMessage(from_users=sender.id))).raw_text.strip()
         expired = hitung_expired(expired_input)
 
-        # Simpan data sementara untuk callback selanjutnya
         data_trojan[chat] = {
             "username": username,
             "expired": expired
