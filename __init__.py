@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 uptime = DT.datetime.now()
 
 exec(open("telegram_bot_panel/var.txt","r").read())
-bot = TelegramClient("XolPanel","6","eb06d4abfb49dc3eeb1aeb98ae0f581e").start(bot_token=BOT_TOKEN)
+bot = TelegramClient("Tokomard","6","eb06d4abfb49dc3eeb1aeb98ae0f581e").start(bot_token=BOT_TOKEN)
 try:
 	open("telegram_bot_panel/database.db")
 except:
