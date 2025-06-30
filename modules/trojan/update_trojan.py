@@ -51,7 +51,7 @@ async def edit_trojan(event):
     data_update[chat] = {"username": username}
 
     async with bot.conversation(chat) as conv:
-        await conv.send_message("📆 Masukkan masa aktif baru (hari) atau tanggal baru (YYYY-MM-DD):")
+        await conv.send_message("📆 Masukkan masa aktif tanggal baru (YYYY-MM-DD) atau renew(hari):")
         expired_raw = (await conv.wait_event(events.NewMessage(from_users=chat))).raw_text.strip()
 
         accounts = parse_accounts_from_config()
