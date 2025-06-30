@@ -6,7 +6,7 @@ print("✅ modul menu.py berhasil diimport")
 async def menu(event):
 	inline = [
 [Button.inline("[ XRAY Menu ]","xray"),
-Button.inline("[ Check VPS Info ]","info")],
+Button.inline("[ Check VPS Info ]","info_vps")],
 [Button.url("[ GitHub Repo ]","https://github.com/MrZodoxVpython"),
 Button.url("[ Telegram Channel ]","https://t.me/MrZodoxVpython")]]
 	sender = await event.get_sender()
