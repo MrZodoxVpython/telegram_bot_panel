@@ -1,4 +1,5 @@
 from telegram_bot_panel import *
+print("✅ modul menu.py berhasil diimport")
 
 @bot.on(events.NewMessage(pattern=r"(?:/menu)$"))
 @bot.on(events.CallbackQuery(data=b'menu'))
