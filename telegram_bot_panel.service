@@ -1,13 +1,12 @@
 [Unit]
-Description=Simple XolPanel - @XolPanel
+Description=Multi-Repo Git Auto Commit & Push
 After=network.target
 
 [Service]
-WorkingDirectory=/root/xolpanel
-ExecStart=/usr/bin/python3 /root/xolpanel/__main__.py
+ExecStart=/etc/xray/autocommit.sh
 Restart=always
-RestartSec=5
-Environment=PYTHONUNBUFFERED=1
+User=root
+Environment=GIT_SSH_COMMAND=ssh
 
 [Install]
 WantedBy=multi-user.target
