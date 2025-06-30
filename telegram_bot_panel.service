@@ -3,8 +3,8 @@ Description=Telegram Bot Panel - Auto Start
 After=network.target
 
 [Service]
-WorkingDirectory=/var/www/html/telegram_bot_panel
-ExecStart=/usr/bin/python3 /var/www/html/telegram_bot_panel/__main__.py
+WorkingDirectory=/var/www/html
+ExecStart=/usr/bin/python3 -m telegram_bot_panel
 Restart=always
 User=root
 Environment=PYTHONUNBUFFERED=1
