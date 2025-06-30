@@ -21,7 +21,7 @@ def __import_all_modules():
             if file.endswith(".py") and not file.startswith("__"):
                 rel_path = os.path.relpath(os.path.join(root, file), base_dir)
                 module_path = rel_path[:-3].replace(os.path.sep, ".")
-                importlib.import_module(f"xolpanel.modules.{module_path}")
+                importlib.import_module(f"telegram_bot_panel.modules.{module_path}")
 
 __import_all_modules()
 
