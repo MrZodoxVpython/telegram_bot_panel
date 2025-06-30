@@ -1,13 +1,13 @@
 from telegram_bot_panel import *
-import os
-import json
+from telethon import events
 import re
-from telethon import events, Button
+import os
+import datetime as DT
 
 @bot.on(events.CallbackQuery(data=b"trojan/read_trojan"))
 async def read_trojan(event):
     sender = await event.get_sender()
-    chat = event.chat_id
+    chat_id = event.chat_id
 
     if valid(str(sender.id)) != "true":
         await event.answer("Akses ditolak!", alert=True)
@@ -15,44 +15,37 @@ async def read_trojan(event):
 
     config_path = "/etc/xray/config.json"
     if not os.path.exists(config_path):
-        await event.respond("❌ File config.json tidak ditemukan.")
+        await bot.send_message(chat_id, "❌ File konfigurasi tidak ditemukan.")
         return
 
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         lines = f.readlines()
 
-    akun_list = []
-    current_expired = ""
-    current_username = ""
-
+    users = {}
     for i, line in enumerate(lines):
         line = line.strip()
-        if line.startswith("#!"):
-            match = re.match(r"#!\s*(\S+)\s+(\d{4}-\d{2}-\d{2})", line)
-            if match:
-                current_username = match.group(1)
-                current_expired = match.group(2)
-
-        elif '"password"' in line and '"email"' in line:
+        if line.startswith("#! "):
             try:
-                # Hilangkan koma di akhir
-                cleaned = line.rstrip(',').strip()
-                obj = json.loads(cleaned)
-                akun_list.append({
-                    "username": obj.get("email", "-"),
-                    "password": obj.get("password", "-"),
-                    "expired": current_expired
-                })
-            except Exception as e:
+                username, expired = line[3:].rsplit(" ", 1)
+                next_line = lines[i + 1].strip()
+                match = re.search(r'"password":\s*"([^"]+)",\s*"email":\s*"([^"]+)"', next_line)
+                if match and match.group(2) == username:
+                    users[username] = {
+                        "expired": expired,
+                        "password": match.group(1)
+                    }
+            except Exception:
                 continue
 
-    if not akun_list:
-        await event.respond("❌ Tidak ada akun Trojan ditemukan.")
+    if not users:
+        await bot.send_message(chat_id, "❌ Tidak ada akun Trojan ditemukan.")
         return
 
-    msg = "**📄 Daftar Akun Trojan:**\n\n"
-    for i, akun in enumerate(akun_list, 1):
-        msg += f"""`{i}. {akun['username']} | {akun['password']} | {akun['expired']}`\n"""
+    # Bikin output rapi
+    msg = "📋 **Daftar Akun Trojan**\n━━━━━━━━━━━━━━━━━━━━━━━\n"
+    for username, data in users.items():
+        expired_fmt = DT.datetime.strptime(data["expired"], "%Y-%m-%d").strftime("%d %B %Y")
+        msg += f"👤 `{username}`\n📆 *Expired:* `{expired_fmt}`\n🔑 *Password:* `{data['password']}`\n━━━━━━━━━━━━━━━━━━━━━━━\n"
 
-    await bot.send_message(chat, msg, parse_mode="markdown")
+    await bot.send_message(chat_id, msg, parse_mode="markdown")
 
