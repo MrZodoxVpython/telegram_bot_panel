@@ -2,106 +2,122 @@ from telegram_bot_panel import *
 import uuid
 import subprocess
 import os
-from datetime import datetime, timedelta
-from telethon import events, Button
+import datetime as DT
 
 @bot.on(events.CallbackQuery(data=b"trojan/create_trojan"))
 async def create_trojan(event):
-    async def create_trojan_(event):
-        chat = event.chat_id
+    async def create_trojan_flow(event):
         sender = await event.get_sender()
+        chat = event.chat_id
 
-        # ── Input Username ──
+        # 1. Username
         async with bot.conversation(chat) as conv:
-            await event.respond("**Input Username:**")
-            username = (await conv.wait_event(events.NewMessage(incoming=True, from_users=sender.id))).raw_text.strip()
+            await event.respond("**Masukkan Username:**")
+            response = await conv.wait_event(events.NewMessage(incoming=True, from_users=sender.id))
+            user = response.raw_text.strip()
 
-        # ── Input Expired (via tombol) ──
+        # 2. Expired
         async with bot.conversation(chat) as conv:
-            await event.respond("**Choose Expiry Days:**", buttons=[
-                [Button.inline("3 Day", b"3"), Button.inline("7 Day", b"7")],
-                [Button.inline("30 Day", b"30"), Button.inline("60 Day", b"60")]
-            ])
-            exp = (await conv.wait_event(events.CallbackQuery)).data.decode("utf-8")
+            await event.respond("**Masa aktif (hari):**")
+            response = await conv.wait_event(events.NewMessage(incoming=True, from_users=sender.id))
+            exp_day = int(response.raw_text.strip())
 
-        expired_date = (datetime.now() + timedelta(days=int(exp))).strftime("%Y-%m-%d")
-
-        # ── UUID Manual / Otomatis ──
-        async with bot.conversation(chat) as conv:
-            await event.respond("**Gunakan password UUID otomatis?**", buttons=[
-                [Button.inline("✅ Ya (Otomatis)", b"auto")],
-                [Button.inline("✏️ Manual (Ketik Sendiri)", b"manual")]
-            ])
-            mode = (await conv.wait_event(events.CallbackQuery)).data.decode("utf-8")
-
-        if mode == "manual":
-            async with bot.conversation(chat) as conv:
-                await event.respond("**Masukkan Password/UUID:**")
-                password = (await conv.wait_event(events.NewMessage(incoming=True, from_users=sender.id))).raw_text.strip()
-        else:
+        # 3. Pilih UUID otomatis atau manual
+        await event.respond("**Gunakan UUID otomatis atau manual?**", buttons=[
+            [Button.inline("🔄 Otomatis (UUID)", b"uuid_auto")],
+            [Button.inline("✍️ Manual", b"uuid_manual")]
+        ])
+        uuid_choice = await bot.wait_event(events.CallbackQuery)
+        if uuid_choice.data == b"uuid_auto":
             password = str(uuid.uuid4())
+        else:
+            async with bot.conversation(chat) as conv:
+                await event.respond("**Masukkan Password/UUID manual:**")
+                response = await conv.wait_event(events.NewMessage(incoming=True, from_users=sender.id))
+                password = response.raw_text.strip()
 
-        # ── Insert ke config.json ──
+        # 4. Proses expired
+        today = DT.date.today()
+        expired = today + DT.timedelta(days=exp_day)
+        expired_str = expired.strftime("%Y-%m-%d")
+
+        # 5. Masukkan ke config
         config_path = "/etc/xray/config.json"
-        tag_list = ["trojanws", "trojangrpc"]
-        comment_line = f"#! {username} {expired_date}"
-        entry_json = f'{{"password": "{password}", "email": "{username}"}}'
-        success = False
+        domain_path = "/etc/xray/domain"
+        comment = f"#! {user} {expired_str}"
+        entry = f'{{"password": "{password}", "email": "{user}"}}'
 
-        def insert_to_tag(cfg_path, tag, comment, entry):
-            if not os.path.exists(cfg_path):
+        def insert_to_tag(tag):
+            if not os.path.exists(config_path):
                 return False
-            with open(cfg_path, "r") as f:
+            with open(config_path, "r") as f:
                 lines = f.readlines()
-
             new_lines = []
             inserted = False
             for line in lines:
                 new_lines.append(line.rstrip())
                 if f"#{tag}" in line and not inserted:
                     new_lines.append(comment)
-                    new_lines.append(f'}},{{{entry[1:-1]}')  # Format benar
+                    new_lines.append(f"}},\n{entry}")
                     inserted = True
-
             if inserted:
-                with open(cfg_path, "w") as f:
+                with open(config_path, "w") as f:
                     f.write("\n".join(new_lines) + "\n")
             return inserted
 
-        success = all(insert_to_tag(config_path, tag, comment_line, entry_json) for tag in tag_list)
+        success_ws = insert_to_tag("trojanws")
+        success_grpc = insert_to_tag("trojangrpc")
 
-        # ── Restart Xray ──
-        if success:
-            subprocess.call("systemctl restart xray", shell=True)
-            domain = open("/etc/xray/domain").read().strip() if os.path.exists("/etc/xray/domain") else "yourdomain.com"
+        if not (success_ws and success_grpc):
+            await event.respond("❌ Gagal menambahkan akun ke config.json")
+            return
 
-            msg = f"""
+        subprocess.call(["systemctl", "restart", "xray"])
+
+        # 6. Ambil domain
+        try:
+            with open(domain_path, "r") as f:
+                domain = f.read().strip()
+        except:
+            domain = "yourdomain.com"
+
+        tls = "443"
+        ntls = "80"
+        grpc = "trojan-grpc"
+        path = "/trojan-ws"
+
+        # 7. Kirim hasil
+        msg = f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
            TROJAN ACCOUNT          
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Remarks        : {username}
+Remarks        : {user}
 Host/IP        : {domain}
 Wildcard       : (bug.com).{domain}
-Port TLS       : 443
-Port non-TLS   : 80
-Port gRPC      : 443
+Port TLS       : {tls}
+Port non-TLS   : {ntls}
+Port gRPC      : {tls}
 Password       : {password}
-Path           : /trojan-ws
-ServiceName    : trojan-grpc
-Expired On     : {expired_date}
+Path           : {path}
+ServiceName    : {grpc}
+Expired On     : {expired_str}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Link TLS       : trojan://{password}@{domain}:443?path=/trojan-ws&security=tls&type=ws#{username}
-Link non-TLS   : trojan://{password}@{domain}:80?path=/trojan-ws&security=none&type=ws#{username}
-Link gRPC      : trojan://{password}@{domain}:443?mode=gun&security=tls&type=grpc&serviceName=trojan-grpc#{username}
+Link TLS       : trojan://{password}@{domain}:{tls}?path={path}&security=tls&type=ws#{user}
+Link non-TLS   : trojan://{password}@{domain}:{ntls}?path={path}&security=none&type=ws#{user}
+Link gRPC      : trojan://{password}@{domain}:{tls}?mode=gun&security=tls&type=grpc&serviceName={grpc}#{user}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
-            await event.respond(msg)
-        else:
-            await event.respond("❌ Gagal menambahkan ke salah satu tag config.")
+
+        buttons = [
+            [Button.url("[ GitHub Repo ]", "https://github.com/xolvaid/simplepanel"),
+             Button.url("[ Channel ]", "https://t.me/XolPanel")]
+        ]
+        await event.respond(msg, buttons=buttons)
 
     sender = await event.get_sender()
-    if valid(str(sender.id)) == "true":
-        await create_trojan_(event)
+    a = valid(str(sender.id))
+    if a == "true":
+        await create_trojan_flow(event)
     else:
-        await event.answer("Akses Ditolak", alert=True)
+        await event.answer("Akses ditolak", alert=True)
 
