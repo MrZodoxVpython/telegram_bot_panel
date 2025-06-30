@@ -53,9 +53,20 @@ async def edit_trojan(event):
     async with bot.conversation(chat) as conv:
         await conv.send_message("📆 Masukkan masa aktif baru (hari) atau tanggal baru (YYYY-MM-DD):")
         expired_raw = (await conv.wait_event(events.NewMessage(from_users=chat))).raw_text.strip()
+
+        accounts = parse_accounts_from_config()
+        old_expired = None
+        for acc in accounts:
+            if acc.group(1) == username:
+                old_expired = DT.datetime.strptime(acc.group(2), "%Y-%m-%d")
+                break
+
         try:
             if expired_raw.isdigit():
-                expired = (DT.datetime.now() + DT.timedelta(days=int(expired_raw))).strftime("%Y-%m-%d")
+                if old_expired:
+                    expired = (old_expired + DT.timedelta(days=int(expired_raw))).strftime("%Y-%m-%d")
+                else:
+                    expired = (DT.datetime.now() + DT.timedelta(days=int(expired_raw))).strftime("%Y-%m-%d")
             else:
                 expired = expired_raw
             data_update[chat]["expired"] = expired
