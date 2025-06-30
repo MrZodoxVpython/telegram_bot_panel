@@ -1,4 +1,4 @@
-from telgram_bot_panel import *
+from telegram_bot_panel import *
 
 @bot.on(events.CallbackQuery(data=b"ssh/delete_ssh"))
 async def delete_ssh(event):
