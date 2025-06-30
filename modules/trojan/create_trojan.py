@@ -1,33 +1,14 @@
 #!/usr/bin/env python3
 
-import json
 import os
-import sys
+import json
 from datetime import datetime, timedelta
 
-# === Cek argumen ===
-if len(sys.argv) < 4:
-    print("❌ Gunakan: create_trojan.py username expired key")
-    sys.exit(1)
-
-username = sys.argv[1]
-expired_input = sys.argv[2]
-password = sys.argv[3]
-config_path = "/etc/xray/config.json"
-domain_file = "/etc/xray/domain"
-tags = ["trojanws", "trojangrpc"]
-comment_prefix = "#! "
-comment_line = f"{comment_prefix}{username} {expired_input}"
-
-# === Hitung tanggal expired ===
 def hitung_expired(input_str):
     if input_str.isdigit():
         return (datetime.now() + timedelta(days=int(input_str))).strftime("%Y-%m-%d")
     return input_str
 
-expired = hitung_expired(expired_input)
-
-# === Fungsi untuk menyisipkan user ke config.json berdasarkan tag ===
 def insert_to_tag(config_path, tag, comment, entry):
     if not os.path.exists(config_path):
         return False
@@ -48,31 +29,39 @@ def insert_to_tag(config_path, tag, comment, entry):
             f.write('\n'.join(new_lines) + '\n')
     return inserted
 
-# === JSON line untuk trojan ===
-json_line = f'{{"password": "{password}", "email": "{username}"}}'
+def main():
+    print("=== CREATE TROJAN ACCOUNT ===")
+    username = input("Username      : ").strip()
+    expired_input = input("Expired (hari / yyyy-mm-dd): ").strip()
+    password = input("Password (UUID): ").strip()
 
-# === Tambahkan ke config.json ===
-success = True
-for tag in tags:
-    if not insert_to_tag(config_path, tag, comment_line, json_line):
-        success = False
+    config_path = "/etc/xray/config.json"
+    domain_file = "/etc/xray/domain"
+    tags = ["trojanws", "trojangrpc"]
+    comment_prefix = "#! "
+    expired = hitung_expired(expired_input)
+    comment_line = f"{comment_prefix}{username} {expired}"
+    json_line = f'{{"password": "{password}", "email": "{username}"}}'
 
-# === Restart Xray dan tampilkan hasil ===
-if success:
-    os.system("systemctl restart xray")
+    success = True
+    for tag in tags:
+        if not insert_to_tag(config_path, tag, comment_line, json_line):
+            success = False
 
-    try:
-        with open(domain_file) as f:
-            domain = f.read().strip()
-    except:
-        domain = "yourdomain.com"
+    if success:
+        os.system("systemctl restart xray")
+        try:
+            with open(domain_file) as f:
+                domain = f.read().strip()
+        except:
+            domain = "yourdomain.com"
 
-    tls = "443"
-    ntls = "80"
-    path = "/trojan-ws"
-    grpc_service = "trojan-grpc"
+        tls = "443"
+        ntls = "80"
+        path = "/trojan-ws"
+        grpc_service = "trojan-grpc"
 
-    print(f"""
+        output = f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
            TROJAN ACCOUNT          
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -91,7 +80,11 @@ Link TLS       : trojan://{password}@{domain}:{tls}?path={path}&security=tls&typ
 Link non-TLS   : trojan://{password}@{domain}:{ntls}?path={path}&security=none&type=ws#{username}
 Link gRPC      : trojan://{password}@{domain}:{tls}?mode=gun&security=tls&type=grpc&serviceName={grpc_service}#{username}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    """)
-else:
-    print("❌ Gagal menambahkan akun ke salah satu tag.")
+        """
+        print(output)
+    else:
+        print("❌ Gagal menambahkan akun ke salah satu tag.")
+
+if __name__ == "__main__":
+    main()
 
