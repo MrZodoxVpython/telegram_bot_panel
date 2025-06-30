@@ -101,22 +101,22 @@ async def finish_trojan(event, username, expired, password):
         if not insert_to_tag(config_path, tag, comment_line, json_line):
             success = False
 
-    if success:
-        subprocess.call("systemctl restart xray", shell=True)
+        if success:
+            subprocess.call("systemctl restart xray", shell=True)
 
-        try:
-            with open(domain_file) as f:
-                domain = f.read().strip()
-        except:
-            domain = "yourdomain.com"
+            try:
+                with open(domain_file) as f:
+                    domain = f.read().strip()
+            except:
+                domain = "yourdomain.com"
 
-        tls = "443"
-        ntls = "80"
-        path = "/trojan-ws"
-        grpc_service = "trojan-grpc"
-        expired_date = DT.datetime.strptime(expired, "%Y-%m-%d").strftime("%d %B %Y")
+            tls = "443"
+            ntls = "80"
+            path = "/trojan-ws"
+            grpc_service = "trojan-grpc"
+            expired_date = DT.datetime.strptime(expired, "%Y-%m-%d").strftime("%d %B %Y")
 
-        msg = f"""
+            msg = f"""```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
            TROJAN ACCOUNT          
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -135,12 +135,13 @@ Link TLS       : trojan://{password}@{domain}:{tls}?path={path}&security=tls&typ
 Link non-TLS   : trojan://{password}@{domain}:{ntls}?path={path}&security=none&type=ws#{username}
 Link gRPC      : trojan://{password}@{domain}:{tls}?mode=gun&security=tls&type=grpc&serviceName={grpc_service}#{username}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"""
-        buttons = [
-            [Button.url("🔧 Repository", "https://github.com/xolvaid/simplepanel"),
-             Button.url("📢 Channel", "https://t.me/XolPanel")]
-        ]
-        await bot.send_message(event.chat_id, msg, buttons=buttons)
-    else:
-        await bot.send_message(event.chat_id, "❌ Gagal menambahkan akun ke Xray.")
+```"""
+
+            buttons = [
+                [Button.url("🔧 Repository", "https://github.com/xolvaid/simplepanel"),
+                 Button.url("📢 Channel", "https://t.me/XolPanel")]
+            ]
+            await bot.send_message(event.chat_id, msg, buttons=buttons, parse_mode="markdown")
+        else:
+            await bot.send_message(event.chat_id, "❌ Gagal menambahkan akun ke Xray.")
 
