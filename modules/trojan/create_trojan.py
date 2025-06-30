@@ -82,9 +82,10 @@ async def trojan_uuid_manual(event):
         await event.edit("❌ Data tidak ditemukan.")
         return
 
-    await event.edit("✍️ Kirimkan password/UUID manual:")
-    msg = await bot.wait_for(events.NewMessage(from_users=sender.id))
-    password = msg.raw_text.strip()
+    async with bot.conversation(chat) as conv:
+        await conv.send_message("✍️ Kirimkan password/UUID manual:")
+        msg = await conv.wait_event(events.NewMessage(from_users=sender.id))
+        password = msg.raw_text.strip()
 
     await finish_trojan(event, data["username"], data["expired"], password)
 
