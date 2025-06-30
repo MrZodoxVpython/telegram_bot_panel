@@ -76,7 +76,7 @@ def update_account_in_config(old_username, new_username, new_expired, new_passwo
 
     pattern_comment = f"#! {old_username} "
     new_comment = f"#! {new_username} {new_expired}"
-    new_json_line = f'}}{{"password": "{new_password}", "email": "{new_username}"'
+    new_json_line = f'}},{{"password": "{new_password}", "email": "{new_username}"'
 
     updated_lines = []
     skip_next = False
