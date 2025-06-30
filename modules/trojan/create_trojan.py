@@ -28,7 +28,7 @@ def insert_to_tag(config_path, tag, comment, entry):
 
         if f"#{tag}" in line and not inserted:
             new_lines.append(comment)
-            new_lines.append(f'}},{{{entry}')  # <- format benar
+            new_lines.append(f'}},{{{entry}')  # <- betul json
             inserted = True
 
     if inserted:
@@ -60,7 +60,7 @@ async def create_trojan(event):
         }
 
         await conv.send_message("🔑 Gunakan UUID otomatis atau manual?", buttons=[
-            [Button.inline("🔄 Otomatis (UUID)", b"trojan_uuid_auto")],
+            [Button.inline("🔄 Otomatis", b"trojan_uuid_auto")],
             [Button.inline("✍️ Manual", b"trojan_uuid_manual")]
         ])
 
@@ -140,8 +140,8 @@ Link gRPC      : trojan://{password}@{domain}:{tls}?mode=gun&security=tls&type=g
 ```"""
 
         buttons = [
-            [Button.url("🔧 Repository", "https://github.com/xolvaid/simplepanel"),
-             Button.url("📢 Channel", "https://t.me/XolPanel")]
+            [Button.url("🔧 Repository", "https://github.com/MrZodoxVpython"),
+             Button.url("📢 Channel", "https://t.me/MrZodoxVpython")]
         ]
         await bot.send_message(event.chat_id, msg, buttons=buttons, parse_mode="markdown")
     else:
