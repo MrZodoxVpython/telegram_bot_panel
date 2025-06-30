@@ -27,7 +27,7 @@ def insert_to_tag(config_path, tag, comment, entry):
         if f"#{tag}" in line and not inserted:
             new_lines.append(comment)
             # Tambahkan akun baru dengan koma di awal baris agar valid
-            new_lines.append(f",{entry}")
+            new_lines.append(f'}},{{{entry[1:-1]}')
             inserted = True
 
     if inserted:
