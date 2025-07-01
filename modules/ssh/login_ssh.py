@@ -2,41 +2,6 @@ from telegram_bot_panel import *
 from telethon import events, Button
 import subprocess
 import re
-import pwd
-
-def parse_logged_ssh():
-    try:
-        output = subprocess.check_output(['ss', '-tnp']).decode()
-    except Exception as e:
-        print(f"[ERROR] Failed to run ss: {e}")
-        return []
-
-    results = []
-    lines = output.strip().split('\n')
-    count = 1
-    for line in lines:
-        if "sshd" in line and "ESTAB" in line:
-            try:
-                ip_port_match = re.search(r'src\s+\S+:(\d+)\s+dst\s+(\S+):(\d+)', line)
-                user_pid_match = re.search(r'users:\(\("sshd",pid=(\d+),fd=\d+\)\)', line)
-                if ip_port_match and user_pid_match:
-                    local_port = ip_port_match.group(1)
-                    remote_ip = ip_port_match.group(2)
-                    remote_port = ip_port_match.group(3)
-                    pid = user_pid_match.group(1)
-
-                    # Get username by PID
-                    try:
-                        uid = int(subprocess.check_output(['ps', '-o', 'uid=', '-p', pid]).decode().strip())
-                        user = pwd.getpwuid(uid).pw_name
-                    except:
-                        user = 'unknown'
-
-                    results.append((count, user, remote_ip, remote_port, pid))
-                    count += 1
-            except:
-                continue
-    return results
 
 @bot.on(events.CallbackQuery(data=b"trojan/login_ssh"))
 async def login_ssh(event):
@@ -45,19 +10,56 @@ async def login_ssh(event):
         await event.answer("Akses ditolak!", alert=True)
         return
 
-    entries = parse_logged_ssh()
-    if not entries:
-        await event.respond("❌ Tidak ada login SSH aktif.")
+    # Jalankan ss dan filter baris sshd ESTAB
+    try:
+        proc = subprocess.run(["ss", "-tnp"], capture_output=True, text=True, check=True)
+        lines = [l for l in proc.stdout.splitlines() if "ESTAB" in l and "sshd" in l]
+    except Exception as e:
+        await bot.send_message(
+            event.chat_id,
+            f"❌ Gagal menjalankan ss: `{e}`",
+            parse_mode="markdown",
+            buttons=[Button.inline("🔙 Back to Menu", b"menu")]
+        )
         return
 
-    msg = "🔐 **Status Login SSH Aktif:**\n\n"
-    for no, user, ip, port, pid in entries:
-        msg += f"{no:02d}. 👤 `{user}` | 🌐 `{ip}:{port}` | 🆔 PID: `{pid}`\n"
+    if not lines:
+        await bot.send_message(
+            event.chat_id,
+            "❌ Tidak ada koneksi SSH aktif saat ini.",
+            buttons=[Button.inline("🔙 Back to Menu", b"menu")]
+        )
+        return
+
+    # Bangun pesan output
+    msg = "🔐 **Koneksi SSH Aktif:**\n"
+    msg += "`No │ User       │ IP             │ Port │ PID`\n"
+    msg += "────────────────────────────────────────\n"
+
+    for idx, line in enumerate(lines, 1):
+        parts = line.split()
+        # remote address ada di kolom ke-5 (indeks 4)
+        remote = parts[4]
+        # pisah IP dan port
+        if ":" in remote:
+            ip, port = remote.rsplit(":", 1)
+        else:
+            ip, port = remote, "?"
+        # ambil PID
+        pid_m = re.search(r"pid=(\d+)", line)
+        pid = pid_m.group(1) if pid_m else "?"
+        # ambil username via ps
+        try:
+            user = subprocess.check_output(["ps", "-o", "user=", "-p", pid], text=True).strip()
+        except:
+            user = "unknown"
+        # format baris
+        msg += f"`{idx:02d} │ {user:<9} │ {ip:<15} │ {port:<4} │ {pid}`\n"
 
     await bot.send_message(
         event.chat_id,
         msg,
-        buttons=[Button.inline("🔙 Back to Menu", b"menu")],
-        parse_mode="markdown"
+        parse_mode="markdown",
+        buttons=[Button.inline("🔙 Back to Menu", b"menu")]
     )
 
