@@ -13,7 +13,7 @@ async def xray_menu(event):
     elif val == "true":
         inline = [
             [Button.inline("[ SSH menu ]", b"ssh")],
-            [Button.inline("[ TROJAN menu ]", b"trojan")],
+            [Button.inline("[ Trojan SGDO-2DEV ]", b"trojan")],
             [Button.inline("← Back to Menu", b"menu")]
         ]
 
