@@ -5,7 +5,7 @@ print("✅ modul menu.py berhasil diimport")
 @bot.on(events.CallbackQuery(data=b'menu'))
 async def menu(event):
 	inline = [
-[Button.inline("[ TROJAN Menu ]","xray"),
+[Button.inline("[ SGDO-2DEV Menu ]","xray"),
 Button.inline("[ Check VPS Info ]","info")],
 [Button.url("[ GitHub Repo ]","https://github.com/MrZodoxVpython"),
 Button.url("[ Telegram Channel ]","https://t.me/MrZodoxVpython")]]
