@@ -53,12 +53,12 @@ async def read_trojan(event):
         await bot.send_message(
             event.chat_id,
             msg,
-            buttons=[Button.inline("🔙 Back to Menu", b"start")]
+            buttons=[Button.inline("🔙 Back to Menu", b"menu")]
         )
 
     if count == 0:
         await bot.send_message(
             event.chat_id,
             "❌ Tidak ada akun Trojan ditemukan.",
-            buttons=[Button.inline("🔙 Back to Menu", b"start")]
+            buttons=[Button.inline("🔙 Back to Menu", b"menu")]
         )
