@@ -19,7 +19,7 @@ Button.url("[ Telegram Channel ]","https://t.me/MrZodoxVpython")]]
 	elif val == "true":
 		msg = f"""
 **━━━━━━━━━━━━━━━━**
-**⟨ 👨‍💻Tokomard Bot Menu ⟩**
+**⟨ 👨‍💻Tokomard Menu ⟩**
 **━━━━━━━━━━━━━━━━**
 **» 🤖Bot Version:** `v2.0`
 **» 🤖Running Since:** `{uptime}`
