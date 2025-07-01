@@ -1,52 +1,42 @@
 from telegram_bot_panel import *
 from telethon import events, Button
 import subprocess
-import pwd
 import re
+import pwd
 
-def get_user_by_pid(pid):
+def parse_logged_ssh():
     try:
-        uid = int(subprocess.check_output(["stat", "-c", "%u", f"/proc/{pid}"]).decode().strip())
-        return pwd.getpwuid(uid).pw_name
-    except:
-        return "unknown"
-
-def get_active_ssh_sessions():
-    try:
-        result = subprocess.run(
-            ["ss", "-tunap"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        sessions = []
-        for line in result.stdout.splitlines():
-            if ":22" not in line or "ESTAB" not in line:
-                continue
-
-            ip_match = re.search(r"\[::ffff:([\d\.]+)\]:\d+", line)
-            if not ip_match:
-                continue
-            ip = ip_match.group(1)
-
-            pid_match = re.search(r"pid=(\d+)", line)
-            pid = pid_match.group(1) if pid_match else "?"
-            user = get_user_by_pid(pid) if pid != "?" else "unknown"
-
-            port_match = re.search(r":22\s+\[::ffff:([\d\.]+)\]:(\d+)", line)
-            port = port_match.group(2) if port_match else "?"
-
-            sessions.append({
-                "user": user,
-                "ip": ip,
-                "port": port,
-                "pid": pid
-            })
-
-        return sessions
+        output = subprocess.check_output(['ss', '-tnp']).decode()
     except Exception as e:
-        print(f"[ERROR] get_active_ssh_sessions: {e}")
+        print(f"[ERROR] Failed to run ss: {e}")
         return []
+
+    results = []
+    lines = output.strip().split('\n')
+    count = 1
+    for line in lines:
+        if "sshd" in line and "ESTAB" in line:
+            try:
+                ip_port_match = re.search(r'src\s+\S+:(\d+)\s+dst\s+(\S+):(\d+)', line)
+                user_pid_match = re.search(r'users:\(\("sshd",pid=(\d+),fd=\d+\)\)', line)
+                if ip_port_match and user_pid_match:
+                    local_port = ip_port_match.group(1)
+                    remote_ip = ip_port_match.group(2)
+                    remote_port = ip_port_match.group(3)
+                    pid = user_pid_match.group(1)
+
+                    # Get username by PID
+                    try:
+                        uid = int(subprocess.check_output(['ps', '-o', 'uid=', '-p', pid]).decode().strip())
+                        user = pwd.getpwuid(uid).pw_name
+                    except:
+                        user = 'unknown'
+
+                    results.append((count, user, remote_ip, remote_port, pid))
+                    count += 1
+            except:
+                continue
+    return results
 
 @bot.on(events.CallbackQuery(data=b"trojan/login_ssh"))
 async def login_ssh(event):
@@ -55,24 +45,19 @@ async def login_ssh(event):
         await event.answer("Akses ditolak!", alert=True)
         return
 
-    sessions = get_active_ssh_sessions()
-
-    if not sessions:
-        await bot.send_message(
-            event.chat_id,
-            "❌ Tidak ada koneksi SSH aktif ditemukan.",
-            buttons=[Button.inline("🔙 Back to Menu", b"menu")]
-        )
+    entries = parse_logged_ssh()
+    if not entries:
+        await event.respond("❌ Tidak ada login SSH aktif.")
         return
 
-    msg = "📡 **Koneksi SSH Aktif**\n━━━━━━━━━━━━━━━━━━━━━━━\n"
-    for i, s in enumerate(sessions, 1):
-        msg += f"{i:02d}. 👤 `{s['user']}` | 🌐 `{s['ip']}:{s['port']}` | 🔢 PID: `{s['pid']}`\n"
+    msg = "🔐 **Status Login SSH Aktif:**\n\n"
+    for no, user, ip, port, pid in entries:
+        msg += f"{no:02d}. 👤 `{user}` | 🌐 `{ip}:{port}` | 🆔 PID: `{pid}`\n"
 
     await bot.send_message(
         event.chat_id,
         msg,
-        parse_mode="markdown",
-        buttons=[Button.inline("🔙 Back to Menu", b"menu")]
+        buttons=[Button.inline("🔙 Back to Menu", b"menu")],
+        parse_mode="markdown"
     )
 
