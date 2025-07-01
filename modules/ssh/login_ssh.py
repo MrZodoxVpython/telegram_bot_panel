@@ -3,47 +3,44 @@ from telethon import events, Button
 import subprocess
 import re
 
-@bot.on(events.CallbackQuery(data=b"login_ssh"))
-async def login_ssh_handler(event):
+@bot.on(events.CallbackQuery(data=b"ssh/login_ssh"))
+async def login_ssh(event):
     sender = await event.get_sender()
     if valid(str(sender.id)) != "true":
         await event.answer("Akses ditolak!", alert=True)
         return
 
     try:
-        # Jalankan perintah ss untuk mendeteksi koneksi aktif ke port 22 (SSH)
         result = subprocess.run(
-            ["ss", "-tnp"], capture_output=True, text=True
+            ["ss", "-tnp"],
+            capture_output=True,
+            text=True,
+            check=True
         )
-        lines = result.stdout.splitlines()
-
-        ssh_connections = []
-        for line in lines:
-            if ":22" in line and "ESTAB" in line:
-                match = re.search(r"src\s+(\S+):(\d+)\s+dst\s+(\S+):22.*users:\(\("ssh[d]?",pid=(\d+),fd=\d+\)\)", line)
-                if match:
-                    ip = match.group(1)
-                    port = match.group(2)
-                    pid = match.group(4)
-                    ssh_connections.append(f"🔐 IP: `{ip}` | Port: `{port}` | PID: `{pid}`")
-
-        if not ssh_connections:
-            message = "❌ Tidak ada koneksi SSH aktif saat ini."
-        else:
-            message = "📡 **Daftar Koneksi SSH Aktif:**\n\n" + "\n".join(ssh_connections)
-
-        await bot.send_message(
-            event.chat_id,
-            message,
-            parse_mode="markdown",
-            buttons=[Button.inline("🔙 Back to Menu", b"menu")]
-        )
-
+        lines = result.stdout.strip().splitlines()
     except Exception as e:
-        await bot.send_message(
-            event.chat_id,
-            f"❌ Gagal membaca koneksi SSH aktif.\nError: `{str(e)}`",
-            parse_mode="markdown",
-            buttons=[Button.inline("🔙 Back to Menu", b"menu")]
-        )
+        await bot.send_message(event.chat_id, f"❌ Gagal membaca koneksi SSH: {e}")
+        return
+
+    connections = []
+    for line in lines:
+        if "ESTAB" in line and ":22" in line:
+            match = re.search(r"(\d+\.\d+\.\d+\.\d+):(\d+)\s+.*pid=(\d+)", line)
+            if match:
+                ip, port, pid = match.groups()
+                connections.append(f"🔗 {ip}:{port} | PID: {pid}")
+            else:
+                connections.append(f"🔗 {line.strip()}")
+
+    if connections:
+        msg = "**📡 Koneksi SSH Aktif (Tunneling):**\n\n" + "\n".join(connections)
+    else:
+        msg = "🛑 Tidak ada koneksi SSH aktif ditemukan."
+
+    await bot.send_message(
+        event.chat_id,
+        msg,
+        parse_mode="markdown",
+        buttons=[Button.inline("🔙 Back to Menu", b"menu")]
+    )
 
