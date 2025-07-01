@@ -1,40 +1,8 @@
-from telegram_bot_panel import *
+from telegram_bot_panel import bot
 from telethon import events, Button
 import subprocess
 import pwd
-import os
 import re
-
-SSH_PORT = "22"
-
-def get_username_from_pid(pid):
-    try:
-        uid = os.stat(f"/proc/{pid}").st_uid
-        return pwd.getpwuid(uid).pw_name
-    except:
-        return "unknown"
-
-def get_ssh_connections():
-    try:
-        output = subprocess.check_output(["ss", "-tnp"]).decode()
-    except Exception as e:
-        print(f"[ERROR] ss command failed: {e}")
-        return []
-
-    connections = []
-    seen = set()
-    for line in output.splitlines():
-        if f":{SSH_PORT}" not in line or "ESTAB" not in line:
-            continue
-
-        match = re.search(r"(\d+\.\d+\.\d+\.\d+):(\d+)\s+.*pid=(\d+),.*\"(.*?)\"", line)
-        if match:
-            ip, port, pid, proc = match.groups()
-            if ("sshd" in proc or "dropbear" in proc) and (ip, pid) not in seen:
-                username = get_username_from_pid(int(pid))
-                connections.append((username, ip, port, pid))
-                seen.add((ip, pid))
-    return connections
 
 @bot.on(events.CallbackQuery(data=b"trojan/login_ssh"))
 async def login_ssh(event):
@@ -44,22 +12,52 @@ async def login_ssh(event):
             await event.answer("Akses ditolak!", alert=True)
             return
 
-        conn = get_ssh_connections()
-        if not conn:
-            await bot.send_message(
-                event.chat_id,
-                "🔒 Tidak ada user SSH yang aktif.",
-                buttons=[Button.inline("🔙 Back to Menu", b"menu")]
-            )
+        # Jalankan netstat untuk koneksi SSH (port 22)
+        cmd = "ss -tnp | grep ':22 '"
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+
+        if not result.stdout.strip():
+            await bot.send_message(event.chat_id, "❌ Tidak ada koneksi SSH aktif saat ini.",
+                                   buttons=[Button.inline("🔙 Back to Menu", b"menu")])
             return
 
-        msg = "🔐 **Login SSH Aktif:**\n\n"
-        msg += "`No  Nama         IP             Port  PID`\n"
-        msg += "────────────────────────────────────────────\n"
+        # Ambil user dari /etc/passwd
+        uid_user_map = {p.pw_uid: p.pw_name for p in pwd.getpwall() if int(p.pw_uid) >= 1000 and "/home" in p.pw_dir}
 
-        for i, (name, ip, port, pid) in enumerate(conn, 1):
-            msg += f"`{i:02d}. {name:<12} {ip:<14} {port:<5} {pid}`\n"
+        msg = "📡 **Login SSH Aktif Saat Ini**\n━━━━━━━━━━━━━━━━━━━━━━━\n"
+        lines = result.stdout.strip().splitlines()
+        seen = set()
+        no = 1
 
+        for line in lines:
+            match = re.search(r'pid=(\d+),fd=\d+\)\)', line)
+            if not match:
+                continue
+            pid = int(match.group(1))
+
+            # Cek UID pemilik PID
+            try:
+                proc_uid = int(subprocess.check_output(["stat", "-c", "%u", f"/proc/{pid}"], text=True).strip())
+                username = uid_user_map.get(proc_uid, "unknown")
+            except Exception:
+                username = "unknown"
+
+            # Ambil IP sumber dan port
+            match_info = re.search(r'src\s+(\S+):(\d+)\s+dst\s+(\S+):(\d+)', line)
+            if match_info:
+                src_ip, src_port, dst_ip, dst_port = match_info.groups()
+            else:
+                continue
+
+            identifier = (username, src_ip, dst_port, pid)
+            if identifier in seen:
+                continue
+            seen.add(identifier)
+
+            msg += f"{no:02d}. `{username}` | IP: `{src_ip}` | Port: `{dst_port}` | PID: `{pid}`\n"
+            no += 1
+
+        msg += "━━━━━━━━━━━━━━━━━━━━━━━"
         await bot.send_message(
             event.chat_id,
             msg,
@@ -68,6 +66,6 @@ async def login_ssh(event):
         )
 
     except Exception as e:
-        await bot.send_message(event.chat_id, f"❌ Error: {e}")
-        print(f"[LOGIN SSH ERROR] {e}")
-
+        await bot.send_message(event.chat_id, f"❌ Terjadi kesalahan:\n`{str(e)}`",
+                               parse_mode="markdown",
+                               buttons=[Button.inline("🔙 Back to Menu", b"menu")])
