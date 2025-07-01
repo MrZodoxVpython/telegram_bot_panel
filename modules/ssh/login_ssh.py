@@ -1,51 +1,49 @@
 from telegram_bot_panel import *
 from telethon import events, Button
-import os
+import subprocess
 import re
-import datetime as dt
 
-AUTH_LOG_PATH = "/var/log/auth.log"
-
-@bot.on(events.CallbackQuery(data=b"ssh/login_ssh"))
-async def login_ssh(event):
+@bot.on(events.CallbackQuery(data=b"login_ssh"))
+async def login_ssh_handler(event):
     sender = await event.get_sender()
-    chat_id = event.chat_id
-
     if valid(str(sender.id)) != "true":
         await event.answer("Akses ditolak!", alert=True)
         return
 
-    if not os.path.exists(AUTH_LOG_PATH):
-        await bot.send_message(chat_id, "❌ File log SSH tidak ditemukan.")
-        return
-
     try:
-        with open(AUTH_LOG_PATH, "r") as f:
-            log_data = f.readlines()[-1000:]  # Ambil 1000 baris terakhir untuk efisiensi
+        # Jalankan perintah ss untuk mendeteksi koneksi aktif ke port 22 (SSH)
+        result = subprocess.run(
+            ["ss", "-tnp"], capture_output=True, text=True
+        )
+        lines = result.stdout.splitlines()
+
+        ssh_connections = []
+        for line in lines:
+            if ":22" in line and "ESTAB" in line:
+                match = re.search(r"src\s+(\S+):(\d+)\s+dst\s+(\S+):22.*users:\(\("ssh[d]?",pid=(\d+),fd=\d+\)\)", line)
+                if match:
+                    ip = match.group(1)
+                    port = match.group(2)
+                    pid = match.group(4)
+                    ssh_connections.append(f"🔐 IP: `{ip}` | Port: `{port}` | PID: `{pid}`")
+
+        if not ssh_connections:
+            message = "❌ Tidak ada koneksi SSH aktif saat ini."
+        else:
+            message = "📡 **Daftar Koneksi SSH Aktif:**\n\n" + "\n".join(ssh_connections)
+
+        await bot.send_message(
+            event.chat_id,
+            message,
+            parse_mode="markdown",
+            buttons=[Button.inline("🔙 Back to Menu", b"menu")]
+        )
+
     except Exception as e:
-        await bot.send_message(chat_id, f"❌ Gagal membaca log: {e}")
-        return
-
-    users = {}
-    pattern = r"Accepted (\w+) for (\w+) from ([\d.]+)"
-    for line in log_data:
-        match = re.search(pattern, line)
-        if match:
-            method, username, ip = match.groups()
-            users[username] = ip  # Simpan yang terakhir saja (tanpa duplikat)
-
-    if not users:
-        await bot.send_message(chat_id, "❌ Tidak ada login SSH ditemukan.")
-        return
-
-    msg = "🔐 **Login SSH Terakhir**\n━━━━━━━━━━━━━━━━━━━━━━━\n"
-    for i, (user, ip) in enumerate(users.items(), 1):
-        msg += f"{i:02d}. 👤 `{user}` dari `{ip}`\n"
-
-    await bot.send_message(
-        chat_id,
-        msg,
-        parse_mode="markdown",
-        buttons=[Button.inline("🔙 Back to Menu", b"menu")]
-    )
+        await bot.send_message(
+            event.chat_id,
+            f"❌ Gagal membaca koneksi SSH aktif.\nError: `{str(e)}`",
+            parse_mode="markdown",
+            buttons=[Button.inline("🔙 Back to Menu", b"menu")]
+        )
 
