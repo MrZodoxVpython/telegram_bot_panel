@@ -1,4 +1,5 @@
 from telegram_bot_panel import *
+from telethon import Button
 from telethon import events
 import re
 import os
@@ -48,4 +49,16 @@ async def read_trojan(event):
         msg += f"👤 `{username}`\n📆 *Expired:* `{expired_fmt}`\n🔑 *Password:* `{data['password']}`\n━━━━━━━━━━━━━━━━━━━━━━━\n"
 
     await bot.send_message(chat_id, msg, parse_mode="markdown")
+    if msg:
+        await bot.send_message(
+            event.chat_id,
+            msg,
+            buttons=[Button.inline("🔙 Back to Menu", b"start")]
+        )
 
+    if count == 0:
+        await bot.send_message(
+            event.chat_id,
+            "❌ Tidak ada akun Trojan ditemukan.",
+            buttons=[Button.inline("🔙 Back to Menu", b"start")]
+        )
