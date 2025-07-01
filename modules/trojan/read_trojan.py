@@ -22,25 +22,14 @@ async def read_trojan(event):
         lines = f.readlines()
 
     users = {}
-    parsing_tag = None  # hanya aktif jika sedang berada di tag #trojanws
-
     for i, line in enumerate(lines):
         line = line.strip()
-        
-        if line == "#trojanws":
-            parsing_tag = "trojanws"
-            continue
-        elif line == "#trojangrpc":
-            parsing_tag = None
-            continue
-
-        if parsing_tag == "trojanws" and line.startswith("#! "):
+        if line.startswith("#! "):
             try:
-                username_raw, expired = line[3:].rsplit(" ", 1)
-                username = username_raw.strip().lower()
+                username, expired = line[3:].rsplit(" ", 1)
                 next_line = lines[i + 1].strip()
                 match = re.search(r'"password":\s*"([^"]+)",\s*"email":\s*"([^"]+)"', next_line)
-                if match and match.group(2).strip().lower() == username:
+                if match and match.group(2) == username:
                     users[username] = {
                         "expired": expired,
                         "password": match.group(1)
@@ -52,12 +41,10 @@ async def read_trojan(event):
         await bot.send_message(chat_id, "❌ Tidak ada akun Trojan ditemukan.")
         return
 
-    msg = "📋 **Daftar Akun Trojan (WS)**\n━━━━━━━━━━━━━━━━━━━━━━━\n"
+    # Bikin output rapi
+    msg = "📋 **Daftar Akun Trojan**\n━━━━━━━━━━━━━━━━━━━━━━━\n"
     for username, data in users.items():
-        try:
-            expired_fmt = DT.datetime.strptime(data["expired"], "%Y-%m-%d").strftime("%d %B %Y")
-        except Exception:
-            expired_fmt = data["expired"]
+        expired_fmt = DT.datetime.strptime(data["expired"], "%Y-%m-%d").strftime("%d %B %Y")
         msg += f"👤 `{username}`\n📆 *Expired:* `{expired_fmt}`\n🔑 *Password:* `{data['password']}`\n━━━━━━━━━━━━━━━━━━━━━━━\n"
 
     await bot.send_message(chat_id, msg, parse_mode="markdown")
