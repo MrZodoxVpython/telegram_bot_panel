@@ -1,6 +1,5 @@
 from telegram_bot_panel import *
-from telethon import Button
-from telethon import events
+from telethon import Button, events
 import re
 import os
 import datetime as DT
@@ -42,23 +41,16 @@ async def read_trojan(event):
         await bot.send_message(chat_id, "❌ Tidak ada akun Trojan ditemukan.")
         return
 
-    # Bikin output rapi
+    # Format output
     msg = "📋 **Daftar Akun Trojan**\n━━━━━━━━━━━━━━━━━━━━━━━\n"
     for username, data in users.items():
         expired_fmt = DT.datetime.strptime(data["expired"], "%Y-%m-%d").strftime("%d %B %Y")
         msg += f"👤 `{username}`\n📆 *Expired:* `{expired_fmt}`\n🔑 *Password:* `{data['password']}`\n━━━━━━━━━━━━━━━━━━━━━━━\n"
 
-    await bot.send_message(chat_id, msg, parse_mode="markdown")
-    if msg:
-        await bot.send_message(
-            event.chat_id,
-            msg,
-            buttons=[Button.inline("🔙 Back to Menu", b"menu")]
-        )
+    await bot.send_message(
+        chat_id,
+        msg,
+        parse_mode="markdown",
+        buttons=[Button.inline("🔙 Back to Menu", b"menu")]
+    )
 
-    if count == 0:
-        await bot.send_message(
-            event.chat_id,
-            "❌ Tidak ada akun Trojan ditemukan.",
-            buttons=[Button.inline("🔙 Back to Menu", b"menu")]
-        )
