@@ -9,8 +9,8 @@ SSH_PORT = "22"
 
 def get_username_from_pid(pid):
     try:
-        uid = os.stat(f"/proc/{pid}").st_uid
-        return pwd.getpwuid(uid).pw_name
+        uid = os.stat(f"/proc/{pid}").st_uid  # Ambil UID
+        return pwd.getpwuid(uid).pw_name     # Ambil nama user dari /etc/passwd
     except:
         return "unknown"
 
@@ -25,12 +25,13 @@ def get_ssh_connections():
     for line in output.splitlines():
         if f":{SSH_PORT}" not in line or "ESTAB" not in line:
             continue
+
         match = re.search(r"(\d+\.\d+\.\d+\.\d+):(\d+)\s+.*pid=(\d+),.*\"(.*?)\"", line)
         if match:
             ip, port, pid, proc = match.groups()
             if ("sshd" in proc or "dropbear" in proc) and (ip, pid) not in seen:
-                user = get_username_from_pid(int(pid))
-                connections.append((user, ip, port, pid))
+                username = get_username_from_pid(int(pid))
+                connections.append((username, ip, port, pid))
                 seen.add((ip, pid))
     return connections
 
